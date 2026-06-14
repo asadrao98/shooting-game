@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SHOOTER — FPS</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='30' fill='%231a1410'/><circle cx='32' cy='32' r='22' fill='none' stroke='%23c83232' stroke-width='3'/><line x1='32' y1='6' x2='32' y2='22' stroke='white' stroke-width='3'/><line x1='32' y1='42' x2='32' y2='58' stroke='white' stroke-width='3'/><line x1='6' y1='32' x2='22' y2='32' stroke='white' stroke-width='3'/><line x1='42' y1='32' x2='58' y2='32' stroke='white' stroke-width='3'/><circle cx='32' cy='32' r='3' fill='%23c83232'/></svg>" />
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #000; font-family: system-ui, sans-serif; color: #fff; user-select: none; -webkit-user-select: none; touch-action: none; overscroll-behavior: none; }
+    canvas { display: block; touch-action: none; }
+    #hud { position: fixed; inset: 0; pointer-events: none; }
+    #crosshair { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; background: #fff; border-radius: 50%; box-shadow: 0 0 4px #000, 0 0 8px rgba(0,0,0,.5); }
+    #stats { position: absolute; bottom: 24px; left: 24px; font: 700 18px/1.2 system-ui; text-shadow: 0 2px 6px rgba(0,0,0,.9); letter-spacing: 1px; }
+    #stats .row { margin-top: 6px; display: flex; align-items: baseline; gap: 8px; }
+    #stats .label { opacity: .55; font-weight: 500; font-size: 12px; letter-spacing: 2px; }
+    #stats .val { font-size: 22px; }
+    #levelInfo { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); font: 700 14px/1.2 system-ui; letter-spacing: 4px; text-shadow: 0 2px 6px rgba(0,0,0,.9); opacity: .9; }
+    #damage { position: absolute; inset: 0; background: radial-gradient(closest-side, transparent 55%, rgba(255,30,30,.55)); opacity: 0; transition: opacity .3s; pointer-events: none; }
+    #flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .08s linear; z-index: 5; }
+    #minimap { position: absolute; top: 24px; right: 24px; width: 170px; height: 170px; border-radius: 50%; box-shadow: 0 2px 16px rgba(0,0,0,.7), 0 0 0 2px rgba(255,255,255,.18) inset; pointer-events: none; }
+    #killFeed { position: absolute; top: 210px; right: 24px; width: 240px; font: 700 12px/1.4 system-ui; text-align: right; letter-spacing: 1px; text-shadow: 0 1px 4px rgba(0,0,0,.9); pointer-events: none; }
+    #killFeed .kf { padding: 4px 8px; margin-bottom: 3px; background: rgba(0,0,0,.45); border-right: 2px solid #ff5040; transition: opacity .3s; }
+    #killFeed .hs { color: #ff7050; margin-left: 6px; font-size: 10px; letter-spacing: 2px; }
+    #weaponName { position: absolute; bottom: 28px; right: 28px; font: 700 14px system-ui; letter-spacing: 4px; color: #fff; opacity: .75; text-shadow: 0 2px 6px rgba(0,0,0,.9); }
+    #scoreBox { position: absolute; top: 24px; left: 24px; font: 700 13px system-ui; letter-spacing: 3px; text-shadow: 0 2px 6px rgba(0,0,0,.9); }
+    #scoreBox .label { opacity: .55; font-weight: 500; font-size: 11px; letter-spacing: 3px; }
+    #scoreBox .val { font-size: 22px; color: #ffd060; margin-left: 8px; }
+    #stats { top: 70px; }
+    #deathCam { position: fixed; inset: 0; background: radial-gradient(circle at 50% 40%, rgba(80,10,10,0.65) 0%, rgba(0,0,0,0.92) 70%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; pointer-events: none; z-index: 80; }
+    #deathCam h1 { font-size: 64px; margin: 0; letter-spacing: 10px; color: #ff4848; text-shadow: 0 0 30px rgba(255,40,40,.6); }
+    #deathCam .killedBy { font: 600 13px system-ui; letter-spacing: 6px; opacity: .65; }
+    #deathCam .source { font: 800 22px system-ui; letter-spacing: 4px; color: #ff8080; }
+    #statsScreen { position: fixed; inset: 0; background: radial-gradient(circle at 50% 30%, rgba(20,30,40,0.92) 0%, rgba(0,0,0,0.96) 70%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; pointer-events: none; z-index: 80; }
+    #statsScreen h1 { font-size: 48px; margin: 0 0 10px; letter-spacing: 10px; color: #f0f0f0; }
+    #statsScreen .grid { display: grid; grid-template-columns: 160px 120px; gap: 8px 24px; font: 700 16px system-ui; letter-spacing: 2px; }
+    #statsScreen .grid .lbl { opacity: .55; text-align: right; font-weight: 500; font-size: 12px; letter-spacing: 3px; }
+    #statsScreen .grid .v { color: #ffd060; }
+    #settings { position: fixed; inset: 0; background: rgba(0,0,0,.92); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; pointer-events: auto; z-index: 110; }
+    #settings h2 { font-size: 28px; letter-spacing: 8px; margin: 0 0 8px; }
+    #settings .grp { display: grid; grid-template-columns: 140px 220px 50px; align-items: center; gap: 14px; font: 700 13px system-ui; letter-spacing: 2px; }
+    #settings .grp .lbl { opacity: .65; font-weight: 500; }
+    #settings input[type=range] { accent-color: #c83232; }
+    #settings .actions { display: flex; gap: 12px; margin-top: 8px; }
+    .hidden { display: none !important; }
+    #hitmarker { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; opacity: 0; transition: opacity .15s; pointer-events: none; }
+    #hitmarker::before, #hitmarker::after { content: ''; position: absolute; background: #fff; box-shadow: 0 0 2px #000; }
+    #hitmarker::before { left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; }
+    #hitmarker::after { top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; }
+    #menu { position: fixed; inset: 0; background: radial-gradient(circle at 50% 30%, #1a1410 0%, #000 70%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; pointer-events: auto; }
+    #menu h1 { font-size: 64px; margin: 0; letter-spacing: 8px; font-weight: 900; color: #f0f0f0; text-shadow: 0 0 30px rgba(255,80,40,.4); }
+    #menu .tag { opacity: .5; letter-spacing: 6px; font-size: 12px; margin-top: -16px; }
+    #menu p.controls { opacity: .65; max-width: 540px; text-align: center; line-height: 1.7; font-size: 14px; }
+    #menu .diff { display: flex; gap: 14px; margin-top: 8px; }
+    #menu button { background: rgba(255,255,255,.04); color: #fff; border: 1px solid rgba(255,255,255,.18); padding: 14px 32px; font: 700 14px system-ui; letter-spacing: 3px; cursor: pointer; border-radius: 2px; transition: all .15s; }
+    #menu button:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.35); }
+    #menu button.primary { background: #b8331f; border-color: #d8453a; }
+    #menu button.primary:hover { background: #cc3a23; }
+    #pause { position: fixed; inset: 0; background: radial-gradient(circle at 50% 35%, rgba(28,20,18,0.92) 0%, rgba(0,0,0,0.94) 70%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; pointer-events: auto; z-index: 100; }
+    #pause h1 { font-size: 56px; margin: 0; letter-spacing: 12px; font-weight: 900; color: #f0f0f0; text-shadow: 0 0 24px rgba(60,80,120,.5); }
+    #pause .hint { opacity: .45; letter-spacing: 4px; font-size: 11px; margin: -8px 0 16px; }
+    #pause button { background: rgba(255,255,255,.04); color: #fff; border: 1px solid rgba(255,255,255,.18); padding: 14px 36px; font: 700 14px system-ui; letter-spacing: 3px; cursor: pointer; border-radius: 2px; transition: all .15s; min-width: 240px; }
+    #pause button:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.35); }
+    #pause button.primary { background: #4a6e4a; border-color: #5e8a5e; }
+    #pause button.primary:hover { background: #557d55; }
+    #pause button.danger { background: #6e2a1f; border-color: #8a3a2a; }
+    #pause button.danger:hover { background: #7d322a; }
+    #menu .row { display: flex; align-items: center; gap: 14px; }
+    #menu label { opacity: .55; letter-spacing: 3px; font-size: 11px; }
+    #menu select { background: rgba(255,255,255,.06); color: #fff; border: 1px solid rgba(255,255,255,.2); padding: 10px 14px; font: 600 13px system-ui; letter-spacing: 2px; border-radius: 2px; cursor: pointer; min-width: 240px; }
+    .hidden { display: none !important; }
+
+    /* Mobile controls */
+    #mobileControls { position: fixed; inset: 0; pointer-events: none; z-index: 30; user-select: none; -webkit-user-select: none; }
+    #touchLook { position: absolute; top: 0; right: 0; width: 60%; height: 100%; pointer-events: auto; touch-action: none; }
+    #joystick { position: absolute; left: 28px; bottom: calc(28px + env(safe-area-inset-bottom)); width: 140px; height: 140px; border-radius: 50%; background: rgba(0,0,0,0.42); border: 2px solid rgba(255,255,255,0.25); pointer-events: auto; touch-action: none; }
+    #joystickKnob { position: absolute; left: 50%; top: 50%; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; background: rgba(255,255,255,0.35); border: 2px solid rgba(255,255,255,0.55); pointer-events: none; transition: transform 0.04s linear; }
+    .mbtn { position: absolute; pointer-events: auto; touch-action: none; background: rgba(0,0,0,0.5); color: #fff; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; font: 700 13px system-ui; letter-spacing: 2px; user-select: none; -webkit-tap-highlight-color: transparent; }
+    .mbtn.pressed { background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.6); }
+    #btnShoot { right: 28px; bottom: calc(140px + env(safe-area-inset-bottom)); width: 110px; height: 110px; background: rgba(184,51,31,0.55); border-color: rgba(216,69,58,0.7); font-size: 14px; }
+    #btnShoot.pressed { background: rgba(216,69,58,0.85); }
+    #btnAds { right: 150px; bottom: calc(170px + env(safe-area-inset-bottom)); width: 80px; height: 80px; }
+    #btnJump { right: 50px; bottom: calc(270px + env(safe-area-inset-bottom)); width: 72px; height: 72px; }
+    #btnCrouch { right: 140px; bottom: calc(270px + env(safe-area-inset-bottom)); width: 60px; height: 60px; }
+    #btnReload { right: 28px; top: 200px; width: 56px; height: 56px; }
+    #btnGrenade { right: 28px; top: 268px; width: 56px; height: 56px; background: rgba(110,70,30,0.55); border-color: rgba(180,120,60,0.7); }
+    #weaponSwitch { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: auto; }
+    #weaponSwitch .wbtn { background: rgba(0,0,0,0.55); color: #fff; border: 1px solid rgba(255,255,255,0.3); width: 72px; height: 40px; border-radius: 4px; font: 700 11px system-ui; letter-spacing: 1px; -webkit-tap-highlight-color: transparent; }
+    #weaponSwitch .wbtn.active { background: rgba(184,51,31,0.55); border-color: rgba(216,69,58,0.8); }
+    #btnPause { position: absolute; top: 24px; left: 24px; pointer-events: auto; background: rgba(0,0,0,0.55); color: #fff; border: 1px solid rgba(255,255,255,0.3); width: 46px; height: 46px; border-radius: 6px; font: 800 16px/1 system-ui; -webkit-tap-highlight-color: transparent; }
+
+    /* Responsive scaling */
+    @media (max-width: 900px) {
+      #menu h1 { font-size: 44px; letter-spacing: 5px; }
+      #menu .tag { font-size: 10px; letter-spacing: 4px; }
+      #menu p.controls { font-size: 11px; line-height: 1.6; max-width: 92%; }
+      #menu .row { flex-direction: column; gap: 8px; }
+      #menu select { min-width: 200px; font-size: 12px; }
+      #menu button { padding: 12px 22px; font-size: 12px; min-width: 150px; }
+      #stats { bottom: auto; top: 80px; left: 16px; font-size: 14px; }
+      #stats .val { font-size: 18px; }
+      #stats .label { font-size: 10px; letter-spacing: 1.5px; }
+      #minimap { width: 130px; height: 130px; top: 16px; right: 16px; }
+      #killFeed { width: 160px; font-size: 10px; top: 160px; right: 16px; }
+      #weaponName { font-size: 12px; bottom: 16px; right: 16px; }
+      #scoreBox { display: none; }
+      #pause h1 { font-size: 36px; letter-spacing: 6px; }
+      #pause button { min-width: 200px; padding: 12px 26px; font-size: 12px; }
+      #statsScreen h1 { font-size: 32px; }
+      #statsScreen .grid { font-size: 14px; grid-template-columns: 130px 100px; }
+      #deathCam h1 { font-size: 44px; letter-spacing: 6px; }
+    }
+    @media (max-width: 520px) {
+      #menu h1 { font-size: 32px; letter-spacing: 3px; }
+      #killFeed { display: none; }
+      #minimap { width: 110px; height: 110px; }
+      #btnShoot { width: 90px; height: 90px; bottom: calc(160px + env(safe-area-inset-bottom)); right: 16px; }
+      #btnAds { width: 64px; height: 64px; right: 120px; bottom: calc(180px + env(safe-area-inset-bottom)); }
+      #btnJump { width: 60px; height: 60px; bottom: calc(258px + env(safe-area-inset-bottom)); }
+      #btnCrouch { width: 52px; height: 52px; bottom: calc(258px + env(safe-area-inset-bottom)); right: 110px; }
+      #joystick { width: 120px; height: 120px; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); }
+      #joystickKnob { width: 52px; height: 52px; margin: -26px 0 0 -26px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="hud" class="hidden">
+    <div id="crosshair"></div>
+    <div id="hitmarker"></div>
+    <div id="levelInfo"></div>
+    <canvas id="minimap" width="170" height="170"></canvas>
+    <div id="killFeed"></div>
+    <div id="weaponName">RIFLE</div>
+    <div id="scoreBox"><span class="label">SCORE</span><span class="val" id="score">0</span></div>
+    <div id="stats">
+      <div class="row"><span class="label">LIVES</span><span class="val" id="lives" style="color:#ff7050;letter-spacing:2px;">●●●</span></div>
+      <div class="row"><span class="label">HP</span><span class="val" id="hp">100</span></div>
+      <div class="row"><span class="label">AMMO</span><span class="val" id="ammo">30 / 90</span></div>
+      <div class="row"><span class="label">GRENADES</span><span class="val" id="grenades">3</span></div>
+      <div class="row"><span class="label">ENEMIES</span><span class="val" id="enemies">0</span></div>
+    </div>
+    <div id="damage"></div>
+    <div id="flash"></div>
+  </div>
+  <div id="deathCam" class="hidden">
+    <h1>YOU DIED</h1>
+    <div class="killedBy">KILLED BY</div>
+    <div class="source" id="deathSource">SOLDIER</div>
+  </div>
+  <div id="statsScreen" class="hidden">
+    <h1 id="statsTitle">LEVEL CLEAR</h1>
+    <div class="grid">
+      <div class="lbl">KILLS</div><div class="v" id="statKills">0</div>
+      <div class="lbl">HEADSHOTS</div><div class="v" id="statHeadshots">0</div>
+      <div class="lbl">ACCURACY</div><div class="v" id="statAccuracy">0%</div>
+      <div class="lbl">TIME</div><div class="v" id="statTime">0:00.0</div>
+    </div>
+  </div>
+  <div id="settings" class="hidden">
+    <h2>SETTINGS</h2>
+    <div class="grp">
+      <div class="lbl">SENSITIVITY</div>
+      <input id="setSens" type="range" min="0.2" max="2.5" step="0.05" value="1" />
+      <div id="setSensVal">1.00</div>
+    </div>
+    <div class="grp">
+      <div class="lbl">FIELD OF VIEW</div>
+      <input id="setFov" type="range" min="60" max="100" step="1" value="75" />
+      <div id="setFovVal">75</div>
+    </div>
+    <div class="grp">
+      <div class="lbl">VOLUME</div>
+      <input id="setVol" type="range" min="0" max="1" step="0.02" value="0.55" />
+      <div id="setVolVal">55</div>
+    </div>
+    <div class="actions">
+      <button id="settingsBack">BACK</button>
+    </div>
+  </div>
+  <div id="mobileControls" class="hidden">
+    <div id="touchLook"></div>
+    <div id="joystick"><div id="joystickKnob"></div></div>
+    <button class="mbtn" id="btnShoot">FIRE</button>
+    <button class="mbtn" id="btnAds">AIM</button>
+    <button class="mbtn" id="btnJump">JUMP</button>
+    <button class="mbtn" id="btnCrouch">CROUCH</button>
+    <button class="mbtn" id="btnReload">R</button>
+    <button class="mbtn" id="btnGrenade">G</button>
+    <div id="weaponSwitch">
+      <button class="wbtn" data-w="pistol">PISTOL</button>
+      <button class="wbtn active" data-w="rifle">RIFLE</button>
+      <button class="wbtn" data-w="shotgun">SHOTGUN</button>
+    </div>
+    <button id="btnPause">II</button>
+  </div>
+  <div id="pause" class="hidden">
+    <h1>PAUSED</h1>
+    <div class="hint">PRESS ESC TO RESUME</div>
+    <button id="resumeBtn" class="primary">RESUME</button>
+    <button id="restartBtn">RESTART STAGE</button>
+    <button id="quitBtn" class="danger">QUIT TO MENU</button>
+  </div>
+  <div id="menu">
+    <h1>SHOOTER</h1>
+    <div class="tag">SELECT DIFFICULTY</div>
+    <p class="controls">WASD move &middot; Mouse aim &middot; Click shoot &middot; Right-click ADS &middot; Shift sprint &middot; Space jump &middot; C crouch &middot; R reload &middot; G grenade &middot; 1/2/3 weapons &middot; ESC pause</p>
+    <div class="row">
+      <label>ENVIRONMENT</label>
+      <select id="env">
+        <option value="clearNoon">Clear Noon</option>
+        <option value="cloudyAfternoon">Cloudy Afternoon</option>
+        <option value="sunset">Sunset</option>
+        <option value="foggyMorning">Foggy Morning</option>
+        <option value="snowyDay">Snowy Day</option>
+      </select>
+    </div>
+    <div class="diff">
+      <button data-diff="easy">EASY</button>
+      <button data-diff="normal" class="primary">NORMAL</button>
+      <button data-diff="hard">HARD</button>
+    </div>
+    <button id="settingsBtn" style="background: rgba(255,255,255,.04); color: #fff; border: 1px solid rgba(255,255,255,.18); padding: 10px 24px; font: 700 12px system-ui; letter-spacing: 3px; cursor: pointer; border-radius: 2px;">SETTINGS</button>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
