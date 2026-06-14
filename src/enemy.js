@@ -467,35 +467,41 @@ export class Enemy {
       const inv = 1 / Math.max(0.001, dist);
       const fx = dx * inv, fz = dz * inv;
 
-      const probeOrigin = { x: pos.x, y: pos.y + 0.15, z: pos.z };
-      const probeDist = 1.8;
-      const playerHandle = player.collider.handle;
-      const enemyMap = this.game && this.game.enemiesByHandle;
-      const filter = c => c.handle !== playerHandle && !(enemyMap && enemyMap.has(c.handle));
+      // Throttle obstacle avoidance — probing every frame at 60fps × N enemies
+      // is expensive on mobile; refresh ~7 times per second and reuse otherwise.
+      this._probeTimer = (this._probeTimer || 0) - dt;
+      if (this._probeTimer <= 0) {
+        this._probeTimer = 0.13 + Math.random() * 0.05;
+        const probeOrigin = { x: pos.x, y: pos.y + 0.15, z: pos.z };
+        const probeDist = 1.8;
+        const playerHandle = player.collider.handle;
+        const enemyMap = this.game && this.game.enemiesByHandle;
+        const filter = c => c.handle !== playerHandle && !(enemyMap && enemyMap.has(c.handle));
+        const probe = (dx2, dz2) => {
+          const ray = new RAPIER.Ray(probeOrigin, { x: dx2, y: 0, z: dz2 });
+          const hit = this.physics.castRay(ray, probeDist, true, undefined, undefined, undefined, undefined, filter);
+          return !hit || hit.timeOfImpact > probeDist * 0.85;
+        };
 
-      const probe = (dx2, dz2) => {
-        const ray = new RAPIER.Ray(probeOrigin, { x: dx2, y: 0, z: dz2 });
-        const hit = this.physics.castRay(ray, probeDist, true, undefined, undefined, undefined, undefined, filter);
-        return !hit || hit.timeOfImpact > probeDist * 0.85;
-      };
-
-      let cx = fx, cz = fz;
-      if (!probe(fx, fz)) {
-        // direct path blocked — try widening angles, prefer one consistent side per enemy
-        if (this._steerSide === undefined) this._steerSide = Math.random() < 0.5 ? -1 : 1;
-        const sequence = [0.55, 1.1, 1.7].flatMap(a => [a * this._steerSide, a * -this._steerSide]);
-        for (const a of sequence) {
-          const cos = Math.cos(a), sin = Math.sin(a);
-          const px = fx * cos - fz * sin;
-          const pz = fx * sin + fz * cos;
-          if (probe(px, pz)) { cx = px; cz = pz; break; }
+        let cx = fx, cz = fz;
+        if (!probe(fx, fz)) {
+          if (this._steerSide === undefined) this._steerSide = Math.random() < 0.5 ? -1 : 1;
+          const sequence = [0.55, 1.1, 1.7].flatMap(a => [a * this._steerSide, a * -this._steerSide]);
+          for (const a of sequence) {
+            const cos = Math.cos(a), sin = Math.sin(a);
+            const px = fx * cos - fz * sin;
+            const pz = fx * sin + fz * cos;
+            if (probe(px, pz)) { cx = px; cz = pz; break; }
+          }
+        } else {
+          this._steerSide = undefined;
         }
-      } else {
-        // clear path — gradually forget the steer preference
-        this._steerSide = undefined;
+        this._steerDir = { x: cx, z: cz };
       }
-      vx = cx * this.speed;
-      vz = cz * this.speed;
+      const sd = this._steerDir || { x: fx, z: fz };
+      // smoothly blend cached steer direction with current direct-to-player vector
+      vx = (sd.x * 0.7 + fx * 0.3) * this.speed;
+      vz = (sd.z * 0.7 + fz * 0.3) * this.speed;
     }
 
     this.vy -= 24 * dt;

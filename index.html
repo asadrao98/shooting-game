@@ -56,13 +56,18 @@
     #editLayoutOverlay .hint { background: rgba(0,0,0,0.78); padding: 10px 16px; border-radius: 6px; font: 700 11px system-ui; letter-spacing: 2px; text-align: center; max-width: 320px; line-height: 1.5; border: 1px solid rgba(255,208,96,0.4); }
     #editLayoutOverlay button { background: #4a6e4a; color: #fff; border: 1px solid #5e8a5e; padding: 12px 38px; font: 700 13px system-ui; letter-spacing: 3px; border-radius: 4px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
     body.editLayout .mbtn,
-    body.editLayout #weaponSwitch .wbtn,
+    body.editLayout #weaponSwitch,
     body.editLayout #btnPause,
-    body.editLayout #joystick {
-      border: 2px dashed #ffd060 !important;
-      background: rgba(255, 208, 96, 0.22) !important;
+    body.editLayout #joystick,
+    body.editLayout #stats,
+    body.editLayout #weaponName,
+    body.editLayout #levelInfo {
+      outline: 2px dashed #ffd060 !important;
+      outline-offset: 2px;
+      background: rgba(255, 208, 96, 0.18) !important;
       transition: none;
     }
+    body.editLayout #weaponSwitch .wbtn { background: rgba(255,208,96,0.18) !important; border-color: rgba(255,208,96,0.5) !important; }
     body.editLayout #touchLook { pointer-events: none !important; }
 
     /* Mobile portrait orientation prompt */
@@ -276,7 +281,7 @@
     <div class="sub">THIS GAME IS DESIGNED FOR LANDSCAPE MODE</div>
   </div>
   <div id="editLayoutOverlay" class="hidden">
-    <div class="hint">DRAG BUTTONS TO REPOSITION<br/>TAP DONE WHEN FINISHED</div>
+    <div class="hint">DRAG TO REPOSITION · PINCH TO RESIZE<br/>BUTTONS · JOYSTICK · STATS · WEAPON · LEVEL TEXT</div>
     <button id="editLayoutDone">DONE</button>
   </div>
   <div id="mobileControls" class="hidden">

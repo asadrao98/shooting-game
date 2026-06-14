@@ -93,164 +93,262 @@ sVol.addEventListener('input', () => {
   game.saveSettings();
 });
 
-// ============ BUTTON LAYOUT CUSTOMIZATION (mobile) ============
-const BUTTON_DEFAULTS = {
-  btnShoot:   { width: 96, anchor: 'br', right: 24, bottom: 24 },
-  btnAds:     { width: 74, anchor: 'br', right: 130, bottom: 56 },
-  btnJump:    { width: 68, anchor: 'br', right: 24, bottom: 132 },
-  btnCrouch:  { width: 58, anchor: 'br', right: 124, bottom: 140 },
-  btnReload:  { width: 52, anchor: 'br', right: 24, bottom: 212 },
-  btnGrenade: { width: 52, anchor: 'br', right: 86, bottom: 218 },
-  btnPause:   { width: 42, anchor: 'tl', left: 24, top: 24 },
-  joystick:   { width: 140, anchor: 'bl', left: 28, bottom: 28 },
+// ============ LAYOUT CUSTOMIZATION (mobile) ============
+// resizable: pinch-to-resize support
+// anchor: corner/edge to position from
+const LAYOUT_DEFAULTS = {
+  // Round action buttons
+  btnShoot:   { width: 96, anchor: 'br', resizable: true },
+  btnAds:     { width: 74, anchor: 'br', resizable: true },
+  btnJump:    { width: 68, anchor: 'br', resizable: true },
+  btnCrouch:  { width: 58, anchor: 'br', resizable: true },
+  btnReload:  { width: 52, anchor: 'br', resizable: true },
+  btnGrenade: { width: 52, anchor: 'br', resizable: true },
+  btnPause:   { width: 42, anchor: 'tl', resizable: true },
+  joystick:   { width: 140, anchor: 'bl', resizable: true },
+  // HUD panels (drag only)
+  stats:        { anchor: 'tl' },
+  weaponName:   { anchor: 'br' },
+  levelInfo:    { anchor: 'tc' },
+  weaponSwitch: { anchor: 'tc' },
 };
 
+function joystickResize(size) {
+  const knob = document.getElementById('joystickKnob');
+  if (!knob) return;
+  const ks = Math.round(size * 0.43);
+  knob.style.width = ks + 'px';
+  knob.style.height = ks + 'px';
+  knob.style.margin = `${-ks / 2}px 0 0 ${-ks / 2}px`;
+}
+
 function applyButtonScale(scale) {
-  for (const [id, def] of Object.entries(BUTTON_DEFAULTS)) {
+  // global scale — used as fallback when no per-element override exists
+  for (const [id, def] of Object.entries(LAYOUT_DEFAULTS)) {
+    if (!def.resizable) continue;
+    if ((game.settings.buttonSizes || {})[id]) continue; // skip if per-button size set
     const el = document.getElementById(id);
     if (!el) continue;
     const size = Math.round(def.width * scale);
     el.style.width = size + 'px';
     el.style.height = size + 'px';
-  }
-  // resize joystick knob proportionally
-  const knob = document.getElementById('joystickKnob');
-  if (knob) {
-    const ks = Math.round(60 * scale);
-    knob.style.width = ks + 'px';
-    knob.style.height = ks + 'px';
-    knob.style.margin = `${-ks / 2}px 0 0 ${-ks / 2}px`;
+    if (id === 'joystick') joystickResize(size);
   }
 }
 
-function applyButtonLayout(layout) {
-  for (const id of Object.keys(BUTTON_DEFAULTS)) {
+function applyButtonSizes(sizes) {
+  for (const [id, size] of Object.entries(sizes || {})) {
+    const el = document.getElementById(id);
+    const def = LAYOUT_DEFAULTS[id];
+    if (!el || !def || !def.resizable) continue;
+    el.style.width = size + 'px';
+    el.style.height = size + 'px';
+    if (id === 'joystick') joystickResize(size);
+  }
+}
+
+function applyLayout(layout) {
+  for (const [id, def] of Object.entries(LAYOUT_DEFAULTS)) {
     const el = document.getElementById(id);
     if (!el) continue;
     const custom = (layout || {})[id];
     if (!custom) continue;
+    if (def.anchor === 'tc') el.style.transform = 'none';
     ['right', 'bottom', 'left', 'top'].forEach(k => {
-      if (custom[k] !== undefined) el.style[k] = custom[k] + 'px';
+      if (typeof custom[k] === 'number' && !isNaN(custom[k])) {
+        el.style[k] = custom[k] + 'px';
+      }
     });
   }
 }
 
-function resetButtonLayout() {
-  for (const id of Object.keys(BUTTON_DEFAULTS)) {
+function resetLayout() {
+  for (const id of Object.keys(LAYOUT_DEFAULTS)) {
     const el = document.getElementById(id);
     if (!el) continue;
     el.style.right = '';
     el.style.bottom = '';
     el.style.top = '';
     el.style.left = '';
+    el.style.width = '';
+    el.style.height = '';
+    el.style.transform = '';
   }
+  const knob = document.getElementById('joystickKnob');
+  if (knob) { knob.style.width = ''; knob.style.height = ''; knob.style.margin = ''; }
   game.settings.buttonLayout = {};
+  game.settings.buttonSizes = {};
   game.settings.buttonScale = 1.0;
   applyButtonScale(1.0);
   game.saveSettings();
 }
 
 let editMode = false;
+let currentDrag = null;
+let currentPinch = null;
+
+function clearTouchState() {
+  currentDrag = null;
+  currentPinch = null;
+  document.querySelectorAll('.mbtn.pressed').forEach(el => el.classList.remove('pressed'));
+}
+
 function enterEditMode() {
   if (editMode) return;
   editMode = true;
+  clearTouchState();
+  // Release any held inputs so they don't stay pressed when editing
+  if (game.player) {
+    game.player.input.jump = false;
+    game.player.input.crouch = false;
+    game.player.input.ads = false;
+  }
+  if (game.weapon) game.weapon.firing = false;
   document.body.classList.add('editLayout');
   document.getElementById('editLayoutOverlay').classList.remove('hidden');
   settingsEl.classList.add('hidden');
   document.getElementById('pause').classList.add('hidden');
 }
+
 function exitEditMode() {
   if (!editMode) return;
   editMode = false;
+  clearTouchState();
   document.body.classList.remove('editLayout');
   document.getElementById('editLayoutOverlay').classList.add('hidden');
   game.saveSettings();
 }
 
-function makeDraggable(id) {
+function readPos(el, def) {
+  const rect = el.getBoundingClientRect();
+  const W = window.innerWidth, H = window.innerHeight;
+  switch (def.anchor) {
+    case 'br': return { right: W - rect.right, bottom: H - rect.bottom };
+    case 'bl': return { left: rect.left, bottom: H - rect.bottom };
+    case 'tl': return { left: rect.left, top: rect.top };
+    case 'tc': return { left: rect.left, top: rect.top };
+    default: return { left: rect.left, top: rect.top };
+  }
+}
+
+function attachDragHandlers(id) {
   const el = document.getElementById(id);
   if (!el) return;
-  let dragging = false;
-  let moved = false;
-  let startTouch = null;
-  let startStyle = null;
-  const def = BUTTON_DEFAULTS[id];
+  const def = LAYOUT_DEFAULTS[id];
 
   el.addEventListener('touchstart', e => {
     if (!editMode) return;
-    const t = e.touches[0];
-    dragging = true;
-    moved = false;
-    startTouch = { x: t.clientX, y: t.clientY };
-    const cs = window.getComputedStyle(el);
-    startStyle = {
-      right: parseFloat(cs.right) || 0,
-      bottom: parseFloat(cs.bottom) || 0,
-      left: parseFloat(cs.left) || 0,
-      top: parseFloat(cs.top) || 0,
-    };
-    e.preventDefault();
-    e.stopImmediatePropagation();
+    // pinch-to-resize (2 touches)
+    if (e.touches.length === 2 && def.resizable) {
+      const [t1, t2] = e.touches;
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      currentPinch = { id, el, startDist: dist, startWidth: el.offsetWidth };
+      currentDrag = null;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
+    }
+    // single-finger drag
+    if (e.touches.length === 1 && !currentDrag) {
+      const t = e.touches[0];
+      currentDrag = {
+        id, el, def,
+        startTouch: { x: t.clientX, y: t.clientY },
+        startPos: readPos(el, def),
+        moved: false,
+      };
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
   }, { capture: true, passive: false });
 
   el.addEventListener('touchmove', e => {
-    if (!dragging) return;
-    const t = e.touches[0];
-    const dx = t.clientX - startTouch.x;
-    const dy = t.clientY - startTouch.y;
-    if (Math.abs(dx) + Math.abs(dy) > 2) moved = true;
-    const W = window.innerWidth, H = window.innerHeight;
-    const w = el.offsetWidth, h = el.offsetHeight;
-
-    if (def.anchor === 'br') {
-      const r = Math.max(0, Math.min(W - w, startStyle.right - dx));
-      const b = Math.max(0, Math.min(H - h, startStyle.bottom - dy));
-      el.style.right = r + 'px'; el.style.bottom = b + 'px';
-    } else if (def.anchor === 'bl') {
-      const l = Math.max(0, Math.min(W - w, startStyle.left + dx));
-      const b = Math.max(0, Math.min(H - h, startStyle.bottom - dy));
-      el.style.left = l + 'px'; el.style.bottom = b + 'px';
-    } else if (def.anchor === 'tl') {
-      const l = Math.max(0, Math.min(W - w, startStyle.left + dx));
-      const tp = Math.max(0, Math.min(H - h, startStyle.top + dy));
-      el.style.left = l + 'px'; el.style.top = tp + 'px';
+    if (!editMode) return;
+    // pinch resize
+    if (currentPinch && currentPinch.el === el && e.touches.length >= 2) {
+      const [t1, t2] = e.touches;
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      const ratio = dist / Math.max(1, currentPinch.startDist);
+      const newSize = Math.max(36, Math.min(220, Math.round(currentPinch.startWidth * ratio)));
+      el.style.width = newSize + 'px';
+      el.style.height = newSize + 'px';
+      if (id === 'joystick') joystickResize(newSize);
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
     }
-    e.preventDefault();
-    e.stopImmediatePropagation();
+    // drag
+    if (currentDrag && currentDrag.el === el && e.touches.length >= 1) {
+      const t = e.touches[0];
+      const dx = t.clientX - currentDrag.startTouch.x;
+      const dy = t.clientY - currentDrag.startTouch.y;
+      if (Math.abs(dx) + Math.abs(dy) > 2) currentDrag.moved = true;
+      const W = window.innerWidth, H = window.innerHeight;
+      const w = el.offsetWidth, h = el.offsetHeight;
+      const sp = currentDrag.startPos;
+      const d = currentDrag.def;
+      if (d.anchor === 'br') {
+        const r = Math.max(0, Math.min(W - w, sp.right - dx));
+        const b = Math.max(0, Math.min(H - h, sp.bottom - dy));
+        el.style.right = r + 'px'; el.style.bottom = b + 'px';
+      } else if (d.anchor === 'bl') {
+        const l = Math.max(0, Math.min(W - w, sp.left + dx));
+        const b = Math.max(0, Math.min(H - h, sp.bottom - dy));
+        el.style.left = l + 'px'; el.style.bottom = b + 'px';
+      } else if (d.anchor === 'tl' || d.anchor === 'tc') {
+        if (d.anchor === 'tc') el.style.transform = 'none';
+        const l = Math.max(0, Math.min(W - w, sp.left + dx));
+        const tp = Math.max(0, Math.min(H - h, sp.top + dy));
+        el.style.left = l + 'px'; el.style.top = tp + 'px';
+      }
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
   }, { capture: true, passive: false });
 
   const finish = e => {
-    if (!dragging) return;
-    dragging = false;
-    if (moved) {
-      if (!game.settings.buttonLayout) game.settings.buttonLayout = {};
-      const cs = window.getComputedStyle(el);
-      const layout = {};
-      const read = k => {
-        const inline = parseFloat(el.style[k]);
-        if (!isNaN(inline)) return inline;
-        const computed = parseFloat(cs[k]);
-        return isNaN(computed) ? null : computed;
-      };
-      if (def.anchor === 'br') {
-        const r = read('right'), b = read('bottom');
-        if (r !== null) layout.right = r;
-        if (b !== null) layout.bottom = b;
-      } else if (def.anchor === 'bl') {
-        const l = read('left'), b = read('bottom');
-        if (l !== null) layout.left = l;
-        if (b !== null) layout.bottom = b;
-      } else if (def.anchor === 'tl') {
-        const l = read('left'), t = read('top');
-        if (l !== null) layout.left = l;
-        if (t !== null) layout.top = t;
-      }
-      if (Object.keys(layout).length) {
-        game.settings.buttonLayout[id] = layout;
-        game.saveSettings();
-      }
+    let handled = false;
+    if (currentPinch && currentPinch.el === el) {
+      if (!game.settings.buttonSizes) game.settings.buttonSizes = {};
+      game.settings.buttonSizes[id] = el.offsetWidth;
+      game.saveSettings();
+      currentPinch = null;
+      handled = true;
     }
-    if (e) { e.preventDefault(); e.stopImmediatePropagation(); }
+    if (currentDrag && currentDrag.el === el) {
+      if (currentDrag.moved) {
+        if (!game.settings.buttonLayout) game.settings.buttonLayout = {};
+        const cs = window.getComputedStyle(el);
+        const layout = {};
+        const read = k => {
+          const inline = parseFloat(el.style[k]);
+          if (!isNaN(inline)) return inline;
+          const computed = parseFloat(cs[k]);
+          return isNaN(computed) ? null : computed;
+        };
+        const d = currentDrag.def;
+        if (d.anchor === 'br') {
+          const r = read('right'), b = read('bottom');
+          if (r !== null) layout.right = r;
+          if (b !== null) layout.bottom = b;
+        } else if (d.anchor === 'bl') {
+          const l = read('left'), b = read('bottom');
+          if (l !== null) layout.left = l;
+          if (b !== null) layout.bottom = b;
+        } else {
+          const l = read('left'), tp = read('top');
+          if (l !== null) layout.left = l;
+          if (tp !== null) layout.top = tp;
+        }
+        if (Object.keys(layout).length) {
+          game.settings.buttonLayout[id] = layout;
+          game.saveSettings();
+        }
+      }
+      currentDrag = null;
+      handled = true;
+    }
+    if (handled && e) { e.preventDefault(); e.stopImmediatePropagation(); }
   };
   el.addEventListener('touchend', finish, { capture: true });
   el.addEventListener('touchcancel', finish, { capture: true });
@@ -258,8 +356,9 @@ function makeDraggable(id) {
 
 if (window.IS_TOUCH) {
   applyButtonScale(game.settings.buttonScale || 1);
-  applyButtonLayout(game.settings.buttonLayout);
-  for (const id of Object.keys(BUTTON_DEFAULTS)) makeDraggable(id);
+  applyButtonSizes(game.settings.buttonSizes);
+  applyLayout(game.settings.buttonLayout);
+  for (const id of Object.keys(LAYOUT_DEFAULTS)) attachDragHandlers(id);
 }
 
 setBtnScale.addEventListener('input', () => {
@@ -271,8 +370,9 @@ setBtnScale.addEventListener('input', () => {
 });
 document.getElementById('editLayoutBtn').addEventListener('click', enterEditMode);
 document.getElementById('editLayoutDone').addEventListener('click', exitEditMode);
+document.getElementById('editLayoutDone').addEventListener('touchend', e => { e.preventDefault(); exitEditMode(); }, { passive: false });
 document.getElementById('resetLayoutBtn').addEventListener('click', () => {
-  resetButtonLayout();
+  resetLayout();
   refreshSettingsUI();
 });
 
