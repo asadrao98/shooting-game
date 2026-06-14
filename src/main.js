@@ -289,13 +289,22 @@ function onDeviceOrientation(e) {
 
   const s = (game.settings.gyroSensitivity || 1) * 0.012;
   const orient = (screen.orientation && screen.orientation.angle) || 0;
-  // map device delta to camera deltas based on screen orientation
-  // landscape-right (90): yaw <- gamma, pitch <- beta
-  // landscape-left (270 or -90): yaw <- -gamma, pitch <- -beta
-  // portrait (0): yaw <- gamma, pitch <- beta (rotated, but game expects landscape)
-  let yawDelta = -dGamma;
-  let pitchDelta = -dBeta;
-  if (orient === 270 || orient === -90) { yawDelta = dGamma; pitchDelta = dBeta; }
+  // In landscape, the device's X axis is vertical and Y axis is horizontal —
+  // so yaw (turning around world Y) corresponds to beta, and pitch (looking
+  // up/down around world X) corresponds to gamma. Sign flips between
+  // landscape-right (90) and landscape-left (270/-90).
+  let yawDelta, pitchDelta;
+  if (orient === 90) {
+    yawDelta = -dBeta;
+    pitchDelta = -dGamma;
+  } else if (orient === 270 || orient === -90) {
+    yawDelta = dBeta;
+    pitchDelta = dGamma;
+  } else {
+    // portrait fallback
+    yawDelta = -dGamma;
+    pitchDelta = -dBeta;
+  }
   if (game.settings.gyroInvertY) pitchDelta = -pitchDelta;
 
   game.player.yaw += yawDelta * s;
