@@ -41,13 +41,29 @@
     #settings .grp .lbl { opacity: .65; font-weight: 500; }
     #settings input[type=range] { accent-color: #c83232; }
     #settings .actions { display: flex; gap: 12px; margin-top: 8px; }
-    #settings .gyroOnly { display: none; }
-    body.mobile #settings .gyroOnly { display: grid; }
+    #settings .gyroOnly,
+    #settings .mobileOnly { display: none; }
+    body.mobile #settings .gyroOnly,
+    body.mobile #settings .mobileOnly { display: grid; }
     #settings .toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
     #settings .toggle input { width: 36px; height: 20px; appearance: none; -webkit-appearance: none; background: #2a2a30; border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; position: relative; cursor: pointer; }
     #settings .toggle input::before { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: #888; border-radius: 50%; transition: all 0.15s; }
     #settings .toggle input:checked { background: #4a6e4a; border-color: #5e8a5e; }
     #settings .toggle input:checked::before { background: #fff; left: 18px; }
+
+    /* Edit layout mode */
+    #editLayoutOverlay { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 200; pointer-events: auto; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    #editLayoutOverlay .hint { background: rgba(0,0,0,0.78); padding: 10px 16px; border-radius: 6px; font: 700 11px system-ui; letter-spacing: 2px; text-align: center; max-width: 320px; line-height: 1.5; border: 1px solid rgba(255,208,96,0.4); }
+    #editLayoutOverlay button { background: #4a6e4a; color: #fff; border: 1px solid #5e8a5e; padding: 12px 38px; font: 700 13px system-ui; letter-spacing: 3px; border-radius: 4px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    body.editLayout .mbtn,
+    body.editLayout #weaponSwitch .wbtn,
+    body.editLayout #btnPause,
+    body.editLayout #joystick {
+      border: 2px dashed #ffd060 !important;
+      background: rgba(255, 208, 96, 0.22) !important;
+      transition: none;
+    }
+    body.editLayout #touchLook { pointer-events: none !important; }
     .hidden { display: none !important; }
     #hitmarker { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; opacity: 0; transition: opacity .15s; pointer-events: none; }
     #hitmarker::before, #hitmarker::after { content: ''; position: absolute; background: #fff; box-shadow: 0 0 2px #000; }
@@ -222,9 +238,23 @@
       <label class="toggle"><input id="setGyroInvert" type="checkbox" /></label>
       <div></div>
     </div>
+    <div class="grp mobileOnly">
+      <div class="lbl">BUTTON SIZE</div>
+      <input id="setBtnScale" type="range" min="0.7" max="1.5" step="0.05" value="1" />
+      <div id="setBtnScaleVal">1.00</div>
+    </div>
+    <div class="grp mobileOnly" style="grid-template-columns: 140px 130px 90px; gap: 12px;">
+      <div class="lbl">LAYOUT</div>
+      <button id="editLayoutBtn" style="background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 9px 14px; font: 700 11px system-ui; letter-spacing: 2px; border-radius: 3px;">EDIT</button>
+      <button id="resetLayoutBtn" style="background: rgba(150,40,40,0.4); color: #fff; border: 1px solid rgba(200,60,60,0.5); padding: 9px 14px; font: 700 11px system-ui; letter-spacing: 2px; border-radius: 3px;">RESET</button>
+    </div>
     <div class="actions">
       <button id="settingsBack">BACK</button>
     </div>
+  </div>
+  <div id="editLayoutOverlay" class="hidden">
+    <div class="hint">DRAG BUTTONS TO REPOSITION<br/>TAP DONE WHEN FINISHED</div>
+    <button id="editLayoutDone">DONE</button>
   </div>
   <div id="mobileControls" class="hidden">
     <div id="touchLook"></div>

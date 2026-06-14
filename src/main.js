@@ -45,6 +45,8 @@ const setGyro = document.getElementById('setGyro');
 const setGyroSens = document.getElementById('setGyroSens');
 const setGyroInvert = document.getElementById('setGyroInvert');
 const setGyroSensVal = document.getElementById('setGyroSensVal');
+const setBtnScale = document.getElementById('setBtnScale');
+const setBtnScaleVal = document.getElementById('setBtnScaleVal');
 
 function refreshSettingsUI() {
   sSens.value = game.settings.sensitivity;
@@ -57,6 +59,8 @@ function refreshSettingsUI() {
   setGyroSens.value = game.settings.gyroSensitivity || 1;
   setGyroSensVal.textContent = (+setGyroSens.value).toFixed(2);
   setGyroInvert.checked = !!game.settings.gyroInvertY;
+  setBtnScale.value = game.settings.buttonScale || 1;
+  setBtnScaleVal.textContent = (+setBtnScale.value).toFixed(2);
 }
 
 document.getElementById('settingsBtn').addEventListener('click', () => {
@@ -87,6 +91,171 @@ sVol.addEventListener('input', () => {
   sVolV.textContent = Math.round(game.settings.volume * 100);
   game.applySettings();
   game.saveSettings();
+});
+
+// ============ BUTTON LAYOUT CUSTOMIZATION (mobile) ============
+const BUTTON_DEFAULTS = {
+  btnShoot:   { width: 96, anchor: 'br', right: 24, bottom: 24 },
+  btnAds:     { width: 74, anchor: 'br', right: 130, bottom: 56 },
+  btnJump:    { width: 68, anchor: 'br', right: 24, bottom: 132 },
+  btnCrouch:  { width: 58, anchor: 'br', right: 124, bottom: 140 },
+  btnReload:  { width: 52, anchor: 'br', right: 24, bottom: 212 },
+  btnGrenade: { width: 52, anchor: 'br', right: 86, bottom: 218 },
+  btnPause:   { width: 42, anchor: 'tl', left: 24, top: 24 },
+  joystick:   { width: 140, anchor: 'bl', left: 28, bottom: 28 },
+};
+
+function applyButtonScale(scale) {
+  for (const [id, def] of Object.entries(BUTTON_DEFAULTS)) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const size = Math.round(def.width * scale);
+    el.style.width = size + 'px';
+    el.style.height = size + 'px';
+  }
+  // resize joystick knob proportionally
+  const knob = document.getElementById('joystickKnob');
+  if (knob) {
+    const ks = Math.round(60 * scale);
+    knob.style.width = ks + 'px';
+    knob.style.height = ks + 'px';
+    knob.style.margin = `${-ks / 2}px 0 0 ${-ks / 2}px`;
+  }
+}
+
+function applyButtonLayout(layout) {
+  for (const id of Object.keys(BUTTON_DEFAULTS)) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const custom = (layout || {})[id];
+    if (!custom) continue;
+    ['right', 'bottom', 'left', 'top'].forEach(k => {
+      if (custom[k] !== undefined) el.style[k] = custom[k] + 'px';
+    });
+  }
+}
+
+function resetButtonLayout() {
+  for (const id of Object.keys(BUTTON_DEFAULTS)) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.style.right = '';
+    el.style.bottom = '';
+    el.style.top = '';
+    el.style.left = '';
+  }
+  game.settings.buttonLayout = {};
+  game.settings.buttonScale = 1.0;
+  applyButtonScale(1.0);
+  game.saveSettings();
+}
+
+let editMode = false;
+function enterEditMode() {
+  if (editMode) return;
+  editMode = true;
+  document.body.classList.add('editLayout');
+  document.getElementById('editLayoutOverlay').classList.remove('hidden');
+  settingsEl.classList.add('hidden');
+  document.getElementById('pause').classList.add('hidden');
+}
+function exitEditMode() {
+  if (!editMode) return;
+  editMode = false;
+  document.body.classList.remove('editLayout');
+  document.getElementById('editLayoutOverlay').classList.add('hidden');
+  game.saveSettings();
+}
+
+function makeDraggable(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  let dragging = false;
+  let startTouch = null;
+  let startStyle = null;
+  const def = BUTTON_DEFAULTS[id];
+
+  el.addEventListener('touchstart', e => {
+    if (!editMode) return;
+    const t = e.touches[0];
+    dragging = true;
+    startTouch = { x: t.clientX, y: t.clientY };
+    const cs = window.getComputedStyle(el);
+    startStyle = {
+      right: parseFloat(cs.right) || 0,
+      bottom: parseFloat(cs.bottom) || 0,
+      left: parseFloat(cs.left) || 0,
+      top: parseFloat(cs.top) || 0,
+    };
+    e.preventDefault();
+    e.stopPropagation();
+  }, { capture: true, passive: false });
+
+  el.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startTouch.x;
+    const dy = t.clientY - startTouch.y;
+    const W = window.innerWidth, H = window.innerHeight;
+    const w = el.offsetWidth, h = el.offsetHeight;
+
+    if (def.anchor === 'br') {
+      const r = Math.max(0, Math.min(W - w, startStyle.right - dx));
+      const b = Math.max(0, Math.min(H - h, startStyle.bottom - dy));
+      el.style.right = r + 'px'; el.style.bottom = b + 'px';
+    } else if (def.anchor === 'bl') {
+      const l = Math.max(0, Math.min(W - w, startStyle.left + dx));
+      const b = Math.max(0, Math.min(H - h, startStyle.bottom - dy));
+      el.style.left = l + 'px'; el.style.bottom = b + 'px';
+    } else if (def.anchor === 'tl') {
+      const l = Math.max(0, Math.min(W - w, startStyle.left + dx));
+      const tp = Math.max(0, Math.min(H - h, startStyle.top + dy));
+      el.style.left = l + 'px'; el.style.top = tp + 'px';
+    }
+    e.preventDefault();
+    e.stopPropagation();
+  }, { capture: true, passive: false });
+
+  const finish = e => {
+    if (!dragging) return;
+    dragging = false;
+    if (!game.settings.buttonLayout) game.settings.buttonLayout = {};
+    const layout = {};
+    if (def.anchor === 'br') {
+      layout.right = parseFloat(el.style.right);
+      layout.bottom = parseFloat(el.style.bottom);
+    } else if (def.anchor === 'bl') {
+      layout.left = parseFloat(el.style.left);
+      layout.bottom = parseFloat(el.style.bottom);
+    } else if (def.anchor === 'tl') {
+      layout.left = parseFloat(el.style.left);
+      layout.top = parseFloat(el.style.top);
+    }
+    game.settings.buttonLayout[id] = layout;
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+  };
+  el.addEventListener('touchend', finish, { capture: true });
+  el.addEventListener('touchcancel', finish, { capture: true });
+}
+
+if (window.IS_TOUCH) {
+  applyButtonScale(game.settings.buttonScale || 1);
+  applyButtonLayout(game.settings.buttonLayout);
+  for (const id of Object.keys(BUTTON_DEFAULTS)) makeDraggable(id);
+}
+
+setBtnScale.addEventListener('input', () => {
+  const scale = +setBtnScale.value;
+  game.settings.buttonScale = scale;
+  setBtnScaleVal.textContent = scale.toFixed(2);
+  applyButtonScale(scale);
+  game.saveSettings();
+});
+document.getElementById('editLayoutBtn').addEventListener('click', enterEditMode);
+document.getElementById('editLayoutDone').addEventListener('click', exitEditMode);
+document.getElementById('resetLayoutBtn').addEventListener('click', () => {
+  resetButtonLayout();
+  refreshSettingsUI();
 });
 
 // ============ GYRO AIM (mobile) ============
