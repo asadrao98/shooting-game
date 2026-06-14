@@ -339,7 +339,8 @@ export class Game {
   loadSettings() {
     let s;
     try { s = JSON.parse(localStorage.getItem('shooter.settings') || 'null'); } catch {}
-    return s || { sensitivity: 1.0, fov: 75, volume: 0.55 };
+    const defaults = { sensitivity: 1.0, fov: 75, volume: 0.55, gyroEnabled: false, gyroSensitivity: 1.0, gyroInvertY: false };
+    return Object.assign(defaults, s || {});
   }
   saveSettings() {
     try { localStorage.setItem('shooter.settings', JSON.stringify(this.settings)); } catch {}

@@ -41,6 +41,11 @@ const sSensV = document.getElementById('setSensVal');
 const sFovV = document.getElementById('setFovVal');
 const sVolV = document.getElementById('setVolVal');
 
+const setGyro = document.getElementById('setGyro');
+const setGyroSens = document.getElementById('setGyroSens');
+const setGyroInvert = document.getElementById('setGyroInvert');
+const setGyroSensVal = document.getElementById('setGyroSensVal');
+
 function refreshSettingsUI() {
   sSens.value = game.settings.sensitivity;
   sFov.value = game.settings.fov;
@@ -48,6 +53,10 @@ function refreshSettingsUI() {
   sSensV.textContent = (+sSens.value).toFixed(2);
   sFovV.textContent = sFov.value;
   sVolV.textContent = Math.round(+sVol.value * 100);
+  setGyro.checked = !!game.settings.gyroEnabled;
+  setGyroSens.value = game.settings.gyroSensitivity || 1;
+  setGyroSensVal.textContent = (+setGyroSens.value).toFixed(2);
+  setGyroInvert.checked = !!game.settings.gyroInvertY;
 }
 
 document.getElementById('settingsBtn').addEventListener('click', () => {
@@ -79,6 +88,101 @@ sVol.addEventListener('input', () => {
   game.applySettings();
   game.saveSettings();
 });
+
+// ============ GYRO AIM (mobile) ============
+let gyroActive = false;
+let gyroLast = null;
+let gyroPermissionGranted = false;
+
+async function requestGyroPermission() {
+  if (typeof DeviceOrientationEvent === 'undefined') return false;
+  if (typeof DeviceOrientationEvent.requestPermission !== 'function') return true;
+  try {
+    const res = await DeviceOrientationEvent.requestPermission();
+    return res === 'granted';
+  } catch { return false; }
+}
+
+function onDeviceOrientation(e) {
+  if (!game.settings.gyroEnabled) return;
+  if (!game.player || game.paused || game.transitioning) return;
+  if (e.beta === null || e.gamma === null) return;
+  if (gyroLast === null) { gyroLast = { beta: e.beta, gamma: e.gamma }; return; }
+
+  let dBeta = e.beta - gyroLast.beta;
+  let dGamma = e.gamma - gyroLast.gamma;
+  // wrap-around safety
+  if (dBeta > 90) dBeta -= 360;
+  else if (dBeta < -90) dBeta += 360;
+  if (dGamma > 90) dGamma -= 180;
+  else if (dGamma < -90) dGamma += 180;
+  gyroLast = { beta: e.beta, gamma: e.gamma };
+
+  const s = (game.settings.gyroSensitivity || 1) * 0.012;
+  const orient = (screen.orientation && screen.orientation.angle) || 0;
+  // map device delta to camera deltas based on screen orientation
+  // landscape-right (90): yaw <- gamma, pitch <- beta
+  // landscape-left (270 or -90): yaw <- -gamma, pitch <- -beta
+  // portrait (0): yaw <- gamma, pitch <- beta (rotated, but game expects landscape)
+  let yawDelta = -dGamma;
+  let pitchDelta = -dBeta;
+  if (orient === 270 || orient === -90) { yawDelta = dGamma; pitchDelta = dBeta; }
+  if (game.settings.gyroInvertY) pitchDelta = -pitchDelta;
+
+  game.player.yaw += yawDelta * s;
+  game.player.pitch += pitchDelta * s;
+  game.player.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, game.player.pitch));
+}
+
+async function setGyroState(enabled) {
+  if (enabled && !gyroActive) {
+    if (!gyroPermissionGranted) {
+      gyroPermissionGranted = await requestGyroPermission();
+      if (!gyroPermissionGranted) return false;
+    }
+    window.addEventListener('deviceorientation', onDeviceOrientation);
+    gyroActive = true;
+    gyroLast = null;
+  } else if (!enabled && gyroActive) {
+    window.removeEventListener('deviceorientation', onDeviceOrientation);
+    gyroActive = false;
+    gyroLast = null;
+  }
+  return true;
+}
+
+setGyro.addEventListener('change', async () => {
+  if (setGyro.checked) {
+    const ok = await setGyroState(true);
+    if (!ok) {
+      setGyro.checked = false;
+      game.settings.gyroEnabled = false;
+      alert('Gyroscope permission denied or unavailable.');
+    } else {
+      game.settings.gyroEnabled = true;
+    }
+  } else {
+    setGyroState(false);
+    game.settings.gyroEnabled = false;
+  }
+  game.saveSettings();
+});
+
+setGyroSens.addEventListener('input', () => {
+  game.settings.gyroSensitivity = +setGyroSens.value;
+  setGyroSensVal.textContent = game.settings.gyroSensitivity.toFixed(2);
+  game.saveSettings();
+});
+
+setGyroInvert.addEventListener('change', () => {
+  game.settings.gyroInvertY = setGyroInvert.checked;
+  game.saveSettings();
+});
+
+// On Android (no requestPermission), auto-attach if previously enabled
+if (window.IS_TOUCH && game.settings.gyroEnabled && typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission !== 'function') {
+  setGyroState(true);
+}
 
 // ============ MOBILE TOUCH CONTROLS ============
 if (window.IS_TOUCH) {

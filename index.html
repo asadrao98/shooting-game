@@ -41,6 +41,13 @@
     #settings .grp .lbl { opacity: .65; font-weight: 500; }
     #settings input[type=range] { accent-color: #c83232; }
     #settings .actions { display: flex; gap: 12px; margin-top: 8px; }
+    #settings .gyroOnly { display: none; }
+    body.mobile #settings .gyroOnly { display: grid; }
+    #settings .toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    #settings .toggle input { width: 36px; height: 20px; appearance: none; -webkit-appearance: none; background: #2a2a30; border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; position: relative; cursor: pointer; }
+    #settings .toggle input::before { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: #888; border-radius: 50%; transition: all 0.15s; }
+    #settings .toggle input:checked { background: #4a6e4a; border-color: #5e8a5e; }
+    #settings .toggle input:checked::before { background: #fff; left: 18px; }
     .hidden { display: none !important; }
     #hitmarker { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; opacity: 0; transition: opacity .15s; pointer-events: none; }
     #hitmarker::before, #hitmarker::after { content: ''; position: absolute; background: #fff; box-shadow: 0 0 2px #000; }
@@ -199,6 +206,21 @@
       <div class="lbl">VOLUME</div>
       <input id="setVol" type="range" min="0" max="1" step="0.02" value="0.55" />
       <div id="setVolVal">55</div>
+    </div>
+    <div class="grp gyroOnly">
+      <div class="lbl">GYRO AIM</div>
+      <label class="toggle"><input id="setGyro" type="checkbox" /></label>
+      <div></div>
+    </div>
+    <div class="grp gyroOnly">
+      <div class="lbl">GYRO SENS</div>
+      <input id="setGyroSens" type="range" min="0.2" max="3" step="0.05" value="1" />
+      <div id="setGyroSensVal">1.00</div>
+    </div>
+    <div class="grp gyroOnly">
+      <div class="lbl">INVERT Y</div>
+      <label class="toggle"><input id="setGyroInvert" type="checkbox" /></label>
+      <div></div>
     </div>
     <div class="actions">
       <button id="settingsBack">BACK</button>
