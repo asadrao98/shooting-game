@@ -2,5 +2,6 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   server: { port: 5173, open: true },
-  optimizeDeps: { exclude: ['@dimforge/rapier3d-compat'] }
+  build: { target: 'esnext' },
+  optimizeDeps: { exclude: ['@dimforge/rapier3d-compat'] },
 });
