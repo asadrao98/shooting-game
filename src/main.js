@@ -171,6 +171,7 @@ function makeDraggable(id) {
   const el = document.getElementById(id);
   if (!el) return;
   let dragging = false;
+  let moved = false;
   let startTouch = null;
   let startStyle = null;
   const def = BUTTON_DEFAULTS[id];
@@ -179,6 +180,7 @@ function makeDraggable(id) {
     if (!editMode) return;
     const t = e.touches[0];
     dragging = true;
+    moved = false;
     startTouch = { x: t.clientX, y: t.clientY };
     const cs = window.getComputedStyle(el);
     startStyle = {
@@ -188,7 +190,7 @@ function makeDraggable(id) {
       top: parseFloat(cs.top) || 0,
     };
     e.preventDefault();
-    e.stopPropagation();
+    e.stopImmediatePropagation();
   }, { capture: true, passive: false });
 
   el.addEventListener('touchmove', e => {
@@ -196,6 +198,7 @@ function makeDraggable(id) {
     const t = e.touches[0];
     const dx = t.clientX - startTouch.x;
     const dy = t.clientY - startTouch.y;
+    if (Math.abs(dx) + Math.abs(dy) > 2) moved = true;
     const W = window.innerWidth, H = window.innerHeight;
     const w = el.offsetWidth, h = el.offsetHeight;
 
@@ -213,26 +216,41 @@ function makeDraggable(id) {
       el.style.left = l + 'px'; el.style.top = tp + 'px';
     }
     e.preventDefault();
-    e.stopPropagation();
+    e.stopImmediatePropagation();
   }, { capture: true, passive: false });
 
   const finish = e => {
     if (!dragging) return;
     dragging = false;
-    if (!game.settings.buttonLayout) game.settings.buttonLayout = {};
-    const layout = {};
-    if (def.anchor === 'br') {
-      layout.right = parseFloat(el.style.right);
-      layout.bottom = parseFloat(el.style.bottom);
-    } else if (def.anchor === 'bl') {
-      layout.left = parseFloat(el.style.left);
-      layout.bottom = parseFloat(el.style.bottom);
-    } else if (def.anchor === 'tl') {
-      layout.left = parseFloat(el.style.left);
-      layout.top = parseFloat(el.style.top);
+    if (moved) {
+      if (!game.settings.buttonLayout) game.settings.buttonLayout = {};
+      const cs = window.getComputedStyle(el);
+      const layout = {};
+      const read = k => {
+        const inline = parseFloat(el.style[k]);
+        if (!isNaN(inline)) return inline;
+        const computed = parseFloat(cs[k]);
+        return isNaN(computed) ? null : computed;
+      };
+      if (def.anchor === 'br') {
+        const r = read('right'), b = read('bottom');
+        if (r !== null) layout.right = r;
+        if (b !== null) layout.bottom = b;
+      } else if (def.anchor === 'bl') {
+        const l = read('left'), b = read('bottom');
+        if (l !== null) layout.left = l;
+        if (b !== null) layout.bottom = b;
+      } else if (def.anchor === 'tl') {
+        const l = read('left'), t = read('top');
+        if (l !== null) layout.left = l;
+        if (t !== null) layout.top = t;
+      }
+      if (Object.keys(layout).length) {
+        game.settings.buttonLayout[id] = layout;
+        game.saveSettings();
+      }
     }
-    game.settings.buttonLayout[id] = layout;
-    if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (e) { e.preventDefault(); e.stopImmediatePropagation(); }
   };
   el.addEventListener('touchend', finish, { capture: true });
   el.addEventListener('touchcancel', finish, { capture: true });
