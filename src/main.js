@@ -4,6 +4,7 @@ import { Game } from './game.js';
 await RAPIER.init();
 
 window.IS_TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+if (window.IS_TOUCH) document.body.classList.add('mobile');
 
 const game = new Game();
 window.game = game;
@@ -50,6 +51,10 @@ function refreshSettingsUI() {
 }
 
 document.getElementById('settingsBtn').addEventListener('click', () => {
+  refreshSettingsUI();
+  settingsEl.classList.remove('hidden');
+});
+document.getElementById('pauseSettingsBtn').addEventListener('click', () => {
   refreshSettingsUI();
   settingsEl.classList.remove('hidden');
 });

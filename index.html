@@ -112,13 +112,41 @@
     @media (max-width: 520px) {
       #menu h1 { font-size: 32px; letter-spacing: 3px; }
       #killFeed { display: none; }
-      #minimap { width: 110px; height: 110px; }
-      #btnShoot { width: 90px; height: 90px; bottom: calc(160px + env(safe-area-inset-bottom)); right: 16px; }
-      #btnAds { width: 64px; height: 64px; right: 120px; bottom: calc(180px + env(safe-area-inset-bottom)); }
-      #btnJump { width: 60px; height: 60px; bottom: calc(258px + env(safe-area-inset-bottom)); }
-      #btnCrouch { width: 52px; height: 52px; bottom: calc(258px + env(safe-area-inset-bottom)); right: 110px; }
       #joystick { width: 120px; height: 120px; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); }
       #joystickKnob { width: 52px; height: 52px; margin: -26px 0 0 -26px; }
+    }
+
+    /* Mobile-only adjustments (touch devices) */
+    body.mobile #minimap,
+    body.mobile #killFeed,
+    body.mobile #scoreBox { display: none; }
+    body.mobile #levelInfo { top: 72px; font-size: 12px; }
+    body.mobile #stats { top: 16px; left: 80px; }
+    body.mobile #weaponName { right: 16px; bottom: calc(12px + env(safe-area-inset-bottom)); font-size: 11px; }
+
+    body.mobile .mbtn { font-size: 10px; letter-spacing: 1px; }
+    body.mobile #btnShoot { right: 24px; bottom: calc(24px + env(safe-area-inset-bottom)); width: 96px; height: 96px; font-size: 13px; letter-spacing: 2px; }
+    body.mobile #btnAds { right: 130px; bottom: calc(56px + env(safe-area-inset-bottom)); width: 74px; height: 74px; font-size: 11px; letter-spacing: 2px; }
+    body.mobile #btnJump { right: 24px; top: auto; bottom: calc(132px + env(safe-area-inset-bottom)); width: 68px; height: 68px; font-size: 11px; }
+    body.mobile #btnCrouch { right: 124px; top: auto; bottom: calc(140px + env(safe-area-inset-bottom)); width: 58px; height: 58px; font-size: 9px; letter-spacing: 0.5px; }
+    body.mobile #btnReload { right: 24px; top: auto; bottom: calc(212px + env(safe-area-inset-bottom)); width: 52px; height: 52px; font-size: 16px; }
+    body.mobile #btnGrenade { right: 86px; top: auto; bottom: calc(218px + env(safe-area-inset-bottom)); width: 52px; height: 52px; font-size: 16px; }
+    body.mobile #btnPause { width: 42px; height: 42px; font-size: 14px; }
+    body.mobile #weaponSwitch .wbtn { width: 64px; height: 36px; font-size: 10px; letter-spacing: 0.5px; }
+
+    /* Menu in landscape mobile — make scrollable & compact so SETTINGS fits */
+    @media (max-height: 520px) {
+      #menu { justify-content: flex-start; overflow-y: auto; padding: 18px 0; gap: 12px; }
+      #menu h1 { font-size: 32px; letter-spacing: 4px; margin: 0; }
+      #menu .tag { margin-top: -8px; font-size: 10px; }
+      #menu p.controls { display: none; }
+      #menu .row { flex-direction: row; gap: 12px; margin: 0; }
+      #menu select { min-width: 200px; padding: 8px 12px; }
+      #menu .diff { gap: 10px; }
+      #menu button { padding: 10px 22px; font-size: 12px; min-width: 110px; }
+      #settingsBtn { padding: 8px 18px !important; font-size: 11px !important; min-width: 120px !important; }
+      #settings h2 { font-size: 22px; margin: 0; }
+      #settings .grp { grid-template-columns: 110px 180px 40px; font-size: 11px; gap: 10px; }
     }
   </style>
 </head>
@@ -197,6 +225,7 @@
     <div class="hint">PRESS ESC TO RESUME</div>
     <button id="resumeBtn" class="primary">RESUME</button>
     <button id="restartBtn">RESTART STAGE</button>
+    <button id="pauseSettingsBtn">SETTINGS</button>
     <button id="quitBtn" class="danger">QUIT TO MENU</button>
   </div>
   <div id="menu">
