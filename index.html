@@ -64,6 +64,22 @@
       transition: none;
     }
     body.editLayout #touchLook { pointer-events: none !important; }
+
+    /* Mobile portrait orientation prompt */
+    #rotateScreen { position: fixed; inset: 0; background: #08090c; z-index: 300; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 24px; text-align: center; }
+    #rotateScreen .phone { width: 70px; height: 120px; border: 4px solid #f0f0f0; border-radius: 12px; position: relative; animation: rotatePhone 2.4s ease-in-out infinite; transform-origin: center; }
+    #rotateScreen .phone::after { content: ''; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 26px; height: 4px; background: #f0f0f0; border-radius: 2px; }
+    #rotateScreen .phone::before { content: ''; position: absolute; top: -2px; left: 50%; transform: translateX(-50%); width: 18px; height: 3px; background: #f0f0f0; border-radius: 2px; }
+    #rotateScreen .title { font: 800 22px system-ui; letter-spacing: 6px; color: #f0f0f0; margin: 0; }
+    #rotateScreen .sub { font: 600 13px system-ui; letter-spacing: 3px; color: #f0f0f0; opacity: .6; max-width: 280px; line-height: 1.6; }
+    @keyframes rotatePhone {
+      0%, 25% { transform: rotate(0deg); }
+      55%, 100% { transform: rotate(-90deg); }
+    }
+    body.mobile #rotateScreen { display: flex; }
+    @media (orientation: landscape) {
+      body.mobile #rotateScreen { display: none; }
+    }
     .hidden { display: none !important; }
     #hitmarker { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; opacity: 0; transition: opacity .15s; pointer-events: none; }
     #hitmarker::before, #hitmarker::after { content: ''; position: absolute; background: #fff; box-shadow: 0 0 2px #000; }
@@ -253,6 +269,11 @@
     <div class="actions">
       <button id="settingsBack">BACK</button>
     </div>
+  </div>
+  <div id="rotateScreen">
+    <div class="phone"></div>
+    <h1 class="title">ROTATE YOUR PHONE</h1>
+    <div class="sub">THIS GAME IS DESIGNED FOR LANDSCAPE MODE</div>
   </div>
   <div id="editLayoutOverlay" class="hidden">
     <div class="hint">DRAG BUTTONS TO REPOSITION<br/>TAP DONE WHEN FINISHED</div>
