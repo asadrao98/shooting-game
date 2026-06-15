@@ -375,6 +375,16 @@ document.getElementById('resetLayoutBtn').addEventListener('click', () => {
   resetLayout();
   refreshSettingsUI();
 });
+document.getElementById('resetControlsBtn').addEventListener('click', () => {
+  game.settings.sensitivity = 1.0;
+  game.settings.fov = 75;
+  game.settings.volume = 0.55;
+  game.settings.gyroSensitivity = 1.0;
+  game.settings.gyroInvertY = false;
+  game.applySettings();
+  refreshSettingsUI();
+  game.saveSettings();
+});
 
 // ============ GYRO AIM (mobile) ============
 let gyroActive = false;

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
 import { spawnTracer } from './effects.js';
+import { disposeObject3D } from './world.js';
 
 const WEAPON_DEFS = {
   pistol: {
@@ -275,7 +276,10 @@ export class Weapon {
   dispose() {
     window.removeEventListener('mousedown', this._md);
     window.removeEventListener('mouseup', this._mu);
+    disposeObject3D(this.group);
     this.camera.remove(this.group);
+    if (this.flashMesh.geometry) this.flashMesh.geometry.dispose();
+    if (this.flashMesh.material) this.flashMesh.material.dispose();
     this.camera.remove(this.flash);
     this.camera.remove(this.flashMesh);
   }

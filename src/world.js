@@ -6,6 +6,34 @@ import { triggerExplosion } from './effects.js';
 const _quat = new THREE.Quaternion();
 const _euler = new THREE.Euler();
 
+// Recursively dispose three.js resources (geometries, materials, textures).
+// Uses a shared Set to avoid double-disposing shared resources.
+export function disposeObject3D(obj, seen = new Set()) {
+  obj.traverse(child => {
+    if (child.geometry && !seen.has(child.geometry)) {
+      seen.add(child.geometry);
+      child.geometry.dispose();
+    }
+    if (child.material) {
+      const mats = Array.isArray(child.material) ? child.material : [child.material];
+      for (const m of mats) {
+        if (seen.has(m)) continue;
+        seen.add(m);
+        for (const key of ['map', 'roughnessMap', 'normalMap', 'metalnessMap', 'emissiveMap', 'aoMap', 'alphaMap']) {
+          if (m[key] && !seen.has(m[key])) {
+            seen.add(m[key]);
+            m[key].dispose();
+          }
+        }
+        m.dispose();
+      }
+    }
+    if (child.isLight && typeof child.dispose === 'function') {
+      child.dispose();
+    }
+  });
+}
+
 export class World {
   constructor(scene, physics, def) {
     this.scene = scene;
@@ -320,9 +348,23 @@ export class World {
   }
 
   dispose(scene, physics) {
-    this.objects.forEach(o => scene.remove(o));
+    const seen = new Set();
+    this.objects.forEach(o => {
+      scene.remove(o);
+      if (o.isObject3D) disposeObject3D(o, seen);
+    });
     this.bodies.forEach(b => physics.removeRigidBody(b));
     this.pickups.forEach(p => p.dispose());
+    // also dispose the materials we cached on the world instance
+    for (const key of ['matFloor', 'matWoodCrate', 'matConcrete', 'matMetalDark', 'matBarrel', 'matSandbag', 'matVehicle', 'matVehicleDark', 'matWheel', 'matTreeTrunk', 'matFoliage', 'matRock', 'matCeiling']) {
+      const m = this[key];
+      if (m && !seen.has(m)) {
+        seen.add(m);
+        if (m.map) m.map.dispose();
+        if (m.roughnessMap) m.roughnessMap.dispose();
+        m.dispose();
+      }
+    }
     this.objects = [];
     this.bodies = [];
     this.barrels = [];

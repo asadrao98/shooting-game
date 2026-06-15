@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
+import { disposeObject3D } from './world.js';
 
 const _v1 = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
@@ -597,6 +598,9 @@ export class Enemy {
 
   dispose(scene, physics) {
     scene.remove(this.mesh);
+    if (this.mesh) disposeObject3D(this.mesh);
+    if (this.barTex) this.barTex.dispose();
+    if (this.barMat) this.barMat.dispose();
     if (this.controller) physics.removeCharacterController(this.controller);
     if (this.body) physics.removeRigidBody(this.body);
   }
